@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>歯科在庫管理システム</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+.app { max-width: 960px; margin: 0 auto; padding: 16px; }
+
+.header { background: white; border-radius: 14px; padding: 16px 20px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.header h1 { font-size: 20px; font-weight: 600; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.badge { font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+.badge-danger { background: #ffe5e5; color: #c0392b; }
+.badge-info { background: #e5f0ff; color: #2563eb; }
+
+.setup-banner { background: #fff8e6; border: 1px solid #f0c060; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.setup-banner h3 { font-size: 14px; font-weight: 600; color: #7d5a00; margin-bottom: 12px; }
+.setup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.setup-field label { display: block; font-size: 11px; color: #7d5a00; margin-bottom: 4px; font-weight: 600; }
+.setup-field input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #f0c060; border-radius: 8px; background: white; outline: none; }
+.setup-save-btn { margin-top: 12px; padding: 9px 22px; font-size: 14px; border: none; border-radius: 10px; background: #f59e0b; color: white; cursor: pointer; font-weight: 500; }
+.setup-ok { background: #e6f7ee; border-color: #34c759; }
+.setup-ok-text { font-size: 13px; color: #1a7a3a; font-weight: 500; }
+
+.tabs { display: flex; background: white; border-radius: 14px; padding: 6px; margin-bottom: 14px; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow-x: auto; }
+.tab { flex: 1; padding: 10px 8px; font-size: 14px; cursor: pointer; border: none; background: none; color: #8e8e93; border-radius: 10px; font-weight: 500; white-space: nowrap; min-width: 60px; }
+.tab.active { background: #f0f0f0; color: #1d1d1f; }
+
+.filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.filter-btn { padding: 7px 16px; font-size: 13px; border: 1px solid #d1d1d6; border-radius: 20px; background: white; cursor: pointer; color: #636366; font-weight: 500; }
+.filter-btn.active { background: #1d1d1f; color: white; border-color: #1d1d1f; }
+.search-wrap { flex: 1; min-width: 160px; }
+.search-input { width: 100%; padding: 8px 14px; font-size: 14px; border: 1px solid #d1d1d6; border-radius: 20px; background: white; outline: none; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.stat { background: white; border-radius: 14px; padding: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat-num { font-size: 24px; font-weight: 600; }
+.stat-label { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+
+.add-btn-wrap { margin-bottom: 14px; }
+.add-item-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border: 2px dashed #d1d1d6; border-radius: 14px; background: white; cursor: pointer; color: #636366; }
+
+/* カード */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card.low { border-left: 4px solid #e24b4a; }
+.card.in-order { box-shadow: 0 0 0 2px #2563eb; }
+
+/* 写真エリア */
+.card-photo { width: 100%; height: 110px; background: #f5f5f7; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; }
+.card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.card-photo-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #c7c7cc; }
+.card-photo-placeholder svg { width: 28px; height: 28px; }
+.card-photo-placeholder span { font-size: 11px; }
+.card-photo-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+.card-photo:hover .card-photo-overlay, .card-photo:active .card-photo-overlay { opacity: 1; }
+.card-photo-overlay span { color: white; font-size: 12px; font-weight: 600; }
+.photo-input { display: none; }
+
+.card-body { padding: 12px; }
+.card-supplier { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
+.card-name { font-size: 14px; font-weight: 500; margin-bottom: 8px; line-height: 1.35; }
+.tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 10px; margin-bottom: 8px; font-weight: 500; }
+.tag-red { background: #ffe5e5; color: #c0392b; }
+.tag-amber { background: #fff3cd; color: #7d5a00; }
+.tag-green { background: #e6f7ee; color: #1a7a3a; }
+.qty-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.qty-label { font-size: 12px; color: #8e8e93; }
+.qty-num { font-size: 22px; font-weight: 600; }
+.qty-low { color: #e24b4a; }
+.bar-bg { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.bar-fill { height: 100%; border-radius: 3px; }
+.bar-ok { background: #34c759; } .bar-warn { background: #f59e0b; } .bar-low { background: #e24b4a; }
+.bar-meta { display: flex; justify-content: space-between; font-size: 11px; color: #8e8e93; margin-bottom: 12px; }
+.card-actions { display: flex; gap: 5px; }
+.btn-sm { flex: 1; padding: 8px 4px; font-size: 12px; border: 1px solid #d1d1d6; border-radius: 10px; background: white; cursor: pointer; color: #636366; font-weight: 500; }
+.btn-sm:active { background: #f0f0f0; }
+.btn-order { border-color: #2563eb; color: #2563eb; background: #e5f0ff; }
+.btn-ordered { border-color: #34c759; color: #1a7a3a; background: #e6f7ee; }
+.btn-edit { border-color: #8e8e93; color: #636366; }
+
+/* 写真拡大モーダル */
+.photo-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; align-items: center; justify-content: center; }
+.photo-modal-overlay.open { display: flex; }
+.photo-modal-img { max-width: 92vw; max-height: 80vh; border-radius: 12px; object-fit: contain; }
+.photo-modal-close { position: absolute; top: 20px; right: 20px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.photo-modal-name { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: white; font-size: 14px; font-weight: 500; background: rgba(0,0,0,0.5); padding: 6px 16px; border-radius: 20px; white-space: nowrap; }
+
+.alert-banner { background: #ffe5e5; border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #c0392b; font-weight: 500; }
+
+.history-toolbar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar-btn { flex: 1; min-width: 140px; padding: 12px; font-size: 14px; font-weight: 600; border-radius: 12px; cursor: pointer; text-align: center; border: none; }
+.btn-csv { background: #e6f7ee; color: #1a7a3a; }
+.btn-print { background: #e5f0ff; color: #2563eb; }
+
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item { background: white; border-radius: 14px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.history-date { font-size: 12px; color: #8e8e93; margin-bottom: 3px; }
+.history-desc { font-size: 13px; line-height: 1.4; }
+.history-sup { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+.status-sent { font-size: 12px; padding: 4px 10px; border-radius: 10px; background: #e6f7ee; color: #1a7a3a; font-weight: 500; flex-shrink: 0; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 20px 20px 0 0; padding: 20px 20px 40px; width: 100%; max-width: 540px; max-height: 92vh; overflow-y: auto; }
+.modal-handle { width: 40px; height: 4px; background: #d1d1d6; border-radius: 2px; margin: 0 auto 18px; }
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+.modal-field { margin-bottom: 14px; }
+.modal-label { font-size: 13px; color: #8e8e93; display: block; margin-bottom: 6px; font-weight: 500; }
+.modal-input { width: 100%; padding: 12px 14px; font-size: 16px; border: 1px solid #d1d1d6; border-radius: 12px; background: #f9f9f9; outline: none; -webkit-appearance: none; }
+.modal-input:focus { border-color: #2563eb; background: white; }
+.modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-cancel { flex: 1; padding: 14px; font-size: 15px; font-weight: 600; border: 1px solid #d1d1d6; border-radius: 12px; background: white; cursor: pointer; color: #636366; }
+.modal-save { flex: 2; padding: 14px; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; background: #2563eb; color: white; cursor: pointer; }
+.modal-delete { padding: 14px 18px; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; background: #ffe5e5; color: #c0392b; cursor: pointer; }
+
+/* モーダル内写真プレビュー */
+.modal-photo-wrap { width: 100%; height: 160px; background: #f5f5f7; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; margin-bottom: 6px; }
+.modal-photo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.modal-photo-placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #8e8e93; }
+.modal-photo-placeholder svg { width: 36px; height: 36px; }
+.modal-photo-placeholder span { font-size: 13px; }
+.modal-photo-hint { font-size: 11px; color: #8e8e93; text-align: center; }
+.modal-photo-remove { width: 100%; padding: 8px; font-size: 13px; border: 1px solid #e24b4a; border-radius: 10px; background: none; color: #e24b4a; cursor: pointer; margin-top: 6px; }
+
+.confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+.confirm-overlay.open { display: flex; }
+.confirm-box { background: white; border-radius: 16px; padding: 24px 20px; width: 100%; max-width: 300px; text-align: center; }
+.confirm-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.confirm-desc { font-size: 14px; color: #636366; margin-bottom: 20px; line-height: 1.5; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-cancel { flex: 1; padding: 12px; font-size: 14px; font-weight: 600; border: 1px solid #d1d1d6; border-radius: 10px; background: white; cursor: pointer; }
+.confirm-ok { flex: 1; padding: 12px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; background: #e24b4a; color: white; cursor: pointer; }
+
+.panel { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.panel-sup-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; margin-bottom: 12px; }
+.panel-sup-name { font-size: 16px; font-weight: 600; }
+.panel-sup-email { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+.order-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+.order-item-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #f5f5f7; flex-shrink: 0; }
+.order-item-thumb-empty { width: 40px; height: 40px; border-radius: 8px; background: #f5f5f7; flex-shrink: 0; }
+.order-item-name { flex: 1; font-size: 14px; }
+.order-item-stock { font-size: 11px; color: #8e8e93; min-width: 56px; }
+.qty-input { width: 64px; padding: 6px 8px; font-size: 15px; border: 1px solid #d1d1d6; border-radius: 8px; text-align: center; background: #f9f9f9; outline: none; }
+.btn-remove { background: none; border: none; color: #c7c7cc; cursor: pointer; font-size: 20px; padding: 0 4px; }
+.preview-box { background: #f9f9f9; border-radius: 10px; padding: 12px; margin-top: 12px; }
+.preview-box strong { font-size: 12px; color: #636366; display: block; margin-bottom: 6px; }
+.preview-box pre { font-size: 12px; color: #636366; white-space: pre-wrap; line-height: 1.7; font-family: inherit; }
+.send-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 14px; }
+.btn-blue { background: #2563eb; color: white; }
+.btn-disabled { background: #f0f0f0; color: #8e8e93; cursor: not-allowed; }
+.btn-success { background: #34c759; color: white; }
+.btn-error { background: #e24b4a; color: white; }
+
+.settings-section { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.settings-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+.field-row { margin-bottom: 12px; }
+.field-label { font-size: 12px; color: #8e8e93; display: block; margin-bottom: 5px; font-weight: 500; }
+.field-input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #d1d1d6; border-radius: 10px; background: #f9f9f9; outline: none; }
+.supplier-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+.supplier-name { font-size: 14px; font-weight: 500; min-width: 80px; }
+.supplier-email-input { flex: 1; padding: 9px 12px; font-size: 14px; border: 1px solid #d1d1d6; border-radius: 10px; background: #f9f9f9; outline: none; }
+.supplier-email-input.saved { border-color: #34c759; background: #f0fff4; }
+.save-ind-btn { padding: 8px 16px; font-size: 13px; border: 1px solid #d1d1d6; border-radius: 10px; background: white; cursor: pointer; white-space: nowrap; font-weight: 500; }
+.save-ind-btn.saved-ok { background: #34c759; color: white; border-color: #34c759; }
+.save-all-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; background: #2563eb; color: white; cursor: pointer; margin-top: 14px; }
+.emailjs-save-btn { padding: 10px 22px; font-size: 14px; font-weight: 600; border: none; border-radius: 10px; background: #2563eb; color: white; cursor: pointer; margin-top: 4px; }
+
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 22px; border-radius: 22px; font-size: 14px; font-weight: 500; color: white; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; }
+.toast-success { background: #34c759; }
+.toast-error { background: #e24b4a; }
+.empty { text-align: center; padding: 50px 20px; color: #8e8e93; font-size: 15px; line-height: 1.6; }
+
+@media print {
+  body { background: white; font-size: 12pt; }
+  .app, #setup-area, .photo-modal-overlay, .modal-overlay, .confirm-overlay, .toast { display: none !important; }
+  #print-area { display: block !important; }
+  .print-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+  .print-title { font-size: 18pt; font-weight: bold; margin-bottom: 4px; }
+  .print-date { font-size: 10pt; color: #444; }
+  .print-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+  .print-table th { background: #f0f0f0; border: 1px solid #ccc; padding: 7px 8px; font-size: 10pt; text-align: left; }
+  .print-table td { border: 1px solid #ccc; padding: 7px 8px; font-size: 10pt; }
+  .print-supplier { font-size: 11pt; font-weight: bold; background: #f0f0f0; padding: 6px 10px; border: 1px solid #ccc; border-bottom: none; margin-top: 16px; }
+  .print-check { width: 48px; text-align: center; }
+  .print-no { width: 32px; color: #888; text-align: center; }
+  .print-qty { width: 56px; text-align: center; }
+  .print-unit { width: 40px; text-align: center; }
+  .print-date-col { width: 88px; }
+  .check-box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #333; border-radius: 2px; }
+  .print-footer { margin-top: 20px; font-size: 9pt; color: #666; text-align: right; }
+}
+#print-area { display: none; }
+
+@media (max-width: 600px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .setup-grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>在庫管理</h1>
+    <div class="badges">
+      <span class="badge badge-danger" id="badge-low">要発注 0件</span>
+      <span class="badge badge-info" id="badge-order" style="display:none">発注リスト 0件</span>
+    </div>
+  </div>
+  <div id="setup-area"></div>
+  <div class="tabs">
+    <button class="tab" onclick="switchTab('inventory')">在庫一覧</button>
+    <button class="tab" onclick="switchTab('order')">発注リスト</button>
+    <button class="tab active" onclick="switchTab('history')">発注履歴</button>
+    <button class="tab" onclick="switchTab('uselog')">使用ログ</button>
+    <button class="tab" onclick="switchTab('settings')">設定</button>
+  </div>
+  <div id="tab-inventory" style="display:none"></div>
+  <div id="tab-order" style="display:none"></div>
+  <div id="tab-history"></div>
+  <div id="tab-uselog" style="display:none"></div>
+  <div id="tab-settings" style="display:none"></div>
+</div>
+
+<!-- 写真拡大モーダル -->
+<div class="photo-modal-overlay" id="photo-modal" onclick="closePhotoModal()">
+  <button class="photo-modal-close" onclick="closePhotoModal()">✕</button>
+  <img class="photo-modal-img" id="photo-modal-img" src="" alt=""/>
+  <div class="photo-modal-name" id="photo-modal-name"></div>
+</div>
+
+<!-- 商品追加・編集モーダル -->
+<div class="modal-overlay" id="item-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">商品を追加</div>
+
+    <!-- 写真 -->
+    <div class="modal-field">
+      <label class="modal-label">写真</label>
+      <div class="modal-photo-wrap" id="modal-photo-wrap" onclick="triggerPhotoInput()">
+        <div class="modal-photo-placeholder" id="modal-photo-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span>タップして写真を撮る・選ぶ</span>
+        </div>
+        <img id="modal-photo-preview" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover"/>
+      </div>
+      <div class="modal-photo-hint">iPadカメラまたはフォトライブラリから選択できます</div>
+      <input type="file" id="photo-file-input" class="photo-input" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)"/>
+      <button class="modal-photo-remove" id="modal-photo-remove" style="display:none" onclick="removePhoto()">写真を削除</button>
+    </div>
+
+    <div class="modal-field">
+      <label class="modal-label">商品名</label>
+      <input class="modal-input" id="f-name" type="text" placeholder="例: コンポジットレジン A2"/>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">発注先</label>
+      <input class="modal-input" id="f-supplier" type="text" placeholder="例: GC歯科" list="supplier-list"/>
+      <datalist id="supplier-list"></datalist>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label class="modal-label">現在庫数</label>
+        <input class="modal-input" id="f-stock" type="number" min="0" placeholder="0"/>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">発注基準数</label>
+        <input class="modal-input" id="f-min" type="number" min="1" placeholder="5"/>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">単位</label>
+      <input class="modal-input" id="f-unit" type="text" placeholder="例: 本・箱・袋・セット"/>
+    </div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- 削除確認 -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">削除しますか？</div>
+    <div class="confirm-desc" id="confirm-desc"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">キャンセル</button>
+      <button class="confirm-ok" id="confirm-ok-btn">削除する</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const ITEMS_KEY   = 'dental_inv_v6';
+const CONFIG_KEY  = 'dental_emailjs_v2';
+const HISTORY_KEY = 'dental_history_v2';
+const PHOTOS_KEY  = 'dental_photos_v1';
+const USELOG_KEY  = 'dental_uselog_v1';
+const ORDERQTY_KEY = 'dental_orderqty_v1';
+const REMINDER_KEY = 'dental_reminder_v1';
+
+const defaultItems = [{"id": 1, "name": "金パラ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 15, "unit": "個", "category": "毎週確認"}, {"id": 2, "name": "エピリドカートリッジ", "supplier": "KO （ササキ）", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 3, "name": "セプトカインカートリッジ", "supplier": "KO （ササキ）", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 4, "name": "滅菌パック　S 　最小", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 5, "name": "滅菌パック　MS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 6, "name": "滅菌パック　M 3点セット", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 7, "name": "滅菌パック　LL", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 8, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃15", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 9, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃20", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 10, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃25", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 11, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃30", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 12, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃35", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 13, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃40", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 14, "name": "ﾓﾘﾀﾍﾟｰﾊﾟｰﾎﾟｲﾝﾄ 200入 ＃45", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎週確認"}, {"id": 15, "name": "Cファイル 25mm  #10のみ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 16, "name": "Hファイル 25mm  #15", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 17, "name": "Hファイル 25mm  #20", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 18, "name": "Hファイル 25mm  #25", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 19, "name": "Hファイル 25mm  #30", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 20, "name": "Hファイル 25mm  #35", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 21, "name": "Hファイル 25mm  #40", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 22, "name": "Hファイル 25mm  #45", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎週確認"}, {"id": 23, "name": "ニトリルグローブ　SS", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "毎週確認"}, {"id": 24, "name": "ニトリルグローブ　S", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "毎週確認"}, {"id": 25, "name": "Ciラテックスグローブ SS", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "毎週確認"}, {"id": 26, "name": "Ciラテックスグローブ S", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "毎週確認"}, {"id": 27, "name": "X線バリバー 小・中・大あり", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 28, "name": "ティッシュペーパー", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 3, "unit": "個", "category": "隔週確認"}, {"id": 29, "name": "マウスピースクリーナー", "supplier": "Ci", "supplierEmail": "", "stock": 0, "min": 5, "unit": "個", "category": "隔週確認"}, {"id": 30, "name": "コンクールマウスウォッシュ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "隔週確認"}, {"id": 31, "name": "ホイップクレンズ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 5, "unit": "個", "category": "隔週確認"}, {"id": 32, "name": "コンクールF", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "隔週確認"}, {"id": 33, "name": "ジェルコートF(1450ppm)", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "隔週確認"}, {"id": 34, "name": "ルシェロ歯ブラシ B-21 ピセラ M", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 35, "name": "DENT.チェックアップジェル　グレープ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 36, "name": "DENT.チェックアップジェル　バナナ　他", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 37, "name": "ルシェロ歯ブラシ Ｂ－２０ Ｍ ピセラ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 38, "name": "サワシリン錠250", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 39, "name": "ロキソニン錠60mg PTP 100錠", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 40, "name": "アフタゾロン口腔用軟膏0.1% 3g×10  あゆみ製薬", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 41, "name": "クラリス錠200 PTP 200mg 100T 大正製薬 [処方]", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 42, "name": "フロモックス100mg", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 43, "name": "ブラザー（brother） 純正インク 4色あり", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 44, "name": "ペーパータオル （基本アスクル）", "supplier": "アスクル（Feed/Ci）", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "隔週確認"}, {"id": 45, "name": "ニューアルジスター 5kg", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 46, "name": "トイレットペーパー", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 47, "name": "ネオロールメンⅢ M", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 48, "name": "タイフレッシュミストプラス 2L", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 49, "name": "ビューティフルフロープラスX 　シェード各種", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 50, "name": "オムニクロマ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 51, "name": "ナイトクリーナー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 52, "name": "エアフローパウダープラス", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 53, "name": "バイオフィルム染出液 ＤＶ－１５８　ＥＭＳ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 54, "name": "キャビトン　ファースト", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 55, "name": "ピーソリーマーCA 32MM", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 56, "name": "ウェーブワンゴールド　グライダー　白", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 57, "name": "ウェーブワンゴールド　スモール　黄色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 58, "name": "ウェーブワンゴールド　プライマリー　赤色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 59, "name": "ウェーブワンゴールド　ミディアム　緑色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 60, "name": "ウェーブワンゴールド　ラージ　白色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 61, "name": "寒天印象材アクアロイド", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "隔週確認"}, {"id": 62, "name": "M縫合針 丸強(TH) 10入 18mm", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 63, "name": "替刃メス #15", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 64, "name": "替刃メス #15C", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 65, "name": "替刃メス #12", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 66, "name": "5倍速用ダイヤバー　別紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 67, "name": "ストレートバー　別紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 68, "name": "コントラバー　別紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 69, "name": "モリタマルチスプレー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 70, "name": "二プロジェクト歯科用注射針", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 71, "name": "アサヒ飲料 十六茶 2.0L 1箱（6本入）", "supplier": "ウェルシア", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 72, "name": "ウェルシアPB 水　500ml 24本", "supplier": "ウェルシア", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "隔週確認"}, {"id": 73, "name": "スピットン除菌クリーナー 詰替用", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 74, "name": "デンタルカラーエプロン ティース", "supplier": "FEED", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 75, "name": "いればこ君アクア Ｓ（リテーナー用）", "supplier": "FEED", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 76, "name": "ジョイ ＪＯＹ Ｗ除菌 シトラスオレンジの香り", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 77, "name": "キッチンハイター 特大２５００ｍｌ", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 78, "name": "水切りネット ストッキングタイプ 三角", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 79, "name": "ウェーブ・ワンゴールドグライダー ２５ｍｍ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 80, "name": "プロテーパーリトリートメント アソート", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 81, "name": "グライド　シリンジキット", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 82, "name": "Ｇｏｏｄ Ｃｈｏｉｃｅ 不織布ガーゼ", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 83, "name": "Ｎｅｗ Ｃｉフロス スポンジフロス", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 84, "name": "プロフィーブラシ関連 （アソート含）", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 85, "name": "リセラペーパートレー", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 86, "name": "Ｃｉ滅菌バッグ シールタイプ S", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎月確認 2F"}, {"id": 87, "name": "Ｃｉ滅菌バッグ シールタイプ M", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 88, "name": "Ｃｉ滅菌バッグ シールタイプ L", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 89, "name": "Ｃｉ滅菌バッグ シールタイプ ＬＬ", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 90, "name": "アスクルオリジナル チャック袋（チャック付き袋） Ｂ７", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 91, "name": "アスクルオリジナル チャック袋（チャック付き袋） Ｂ９ 厚手タイプなど", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 92, "name": "バイオフィルム染出液 ＤＶ－１５８　ＥＭＳ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 93, "name": "コンクール クリーニングジェル ＰＭＴＣ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 94, "name": "クリンプロ クリーニングペーストＰＭＴＣ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 95, "name": "モリタアクセサリーポイント 大", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 96, "name": "ルートキャナル　シリンジ", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 97, "name": "カルシペックス２", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 98, "name": "モリタガッタパーチャポイント メイン 30 35 40", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 99, "name": "次亜塩６％「ヨシダ」 （５２５ｇ）５００ｍＬ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 100, "name": "カリエスディテクター ＃２２０", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 101, "name": "ゲルエッチャント ３ｇ　Ｋｅｒｒ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 102, "name": "ローラーコットン綿球 Ｌ （６ＭＭ） ニチエイ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 103, "name": "グラビティバイト", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 104, "name": "ミキシンコルト　50mm　先端", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 105, "name": "エクザファイン用アドヒーシブ ８Ｇ 青色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 106, "name": "ドクターシリコン レギュラー　歯冠補綴用　青", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 107, "name": "ドクターシリコン パテ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 108, "name": "ドクターシリコン インジェクション 義歯　茶色", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 109, "name": "ハイ－ボンド グラスアイオノマー ＣＸ　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 110, "name": "テンポラリーハード　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 111, "name": "ベースセメント　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 112, "name": "SAルーティングセメント", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 113, "name": "プロビファイン　液　ファースト", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 114, "name": "プロビファイン　粉末　Ａ３", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 115, "name": "プロビファイン　粉末　ピンク", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 116, "name": "プレートパラフィンワックス", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 117, "name": "マザックＰ モリタ製／ニッセキ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 118, "name": "白色ワセリンＰ ５００ｇ 健栄製薬", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 119, "name": "寒天シリンジ 掃除棒 ９０３０３　ＹＤＭ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 120, "name": "スーパートレークリーナー １．２ＫＧ 松風", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 121, "name": "フィットシール　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 122, "name": "消毒用エタノール液ＩＰ ５Ｌ 健栄製薬", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 123, "name": "セラミックストーン（サイドキック用）", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 124, "name": "燃料用アルコール ５００ＭＬ （トウホウ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 125, "name": "ネオザロカインパスタ １５ｇ（チューブ入）", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 126, "name": "硬石膏　エレファストーン・イエロー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 127, "name": "ｉ－ＴＦＣルミナスボンドⅡ ボンド ３ｍＬ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎月確認 2F"}, {"id": 128, "name": "Ｉ－ＴＦＣルミナスファイバーⅡ 紫　1.0", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎月確認 2F"}, {"id": 129, "name": "Ｉ－ＴＦＣルミナスファイバーⅡ 赤　1.2", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎月確認 2F"}, {"id": 130, "name": "Ｉ－ＴＦＣルミナスファイバーⅡ 紫　1.4", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "毎月確認 2F"}, {"id": 131, "name": "咬合紙　アーティキュレーティングペーパー　赤", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 132, "name": "スーパーボンド ポリマー粉末", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 133, "name": "スーパーボンドクイック モノマー液", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 134, "name": "カタナクリーナー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 135, "name": "スーパーボンド　筆先　ピンク", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 136, "name": "ペンキュアー２０００用ディスポカバー", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 137, "name": "アイＬＥＤＩＩ ディスポーザブル専用スリーブ", "supplier": "Ciモール", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 138, "name": "隔壁用　ＥＺコートマトリックス 5.5ｍｍ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 139, "name": "ＳＬＰエンドアクチベーター スリーブ", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 140, "name": "ティオン　オフィス", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 141, "name": "ティオン　ホーム　プラチナ", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 2F"}, {"id": 142, "name": "TC-11EF　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 143, "name": "KSF102R　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 144, "name": "K102R　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 145, "name": "K148 　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 146, "name": "K440 　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 147, "name": "CE-15EF 　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 148, "name": "K1202 　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 149, "name": "K144　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 150, "name": "K340　　　DIA -BURS", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 151, "name": "ケーオーオリジナル", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 10, "unit": "個", "category": "バー在庫"}, {"id": 152, "name": "ラルゴピーソリーマー　＃1　細", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 153, "name": "ラルゴピーソリーマー　＃2　中", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 154, "name": "ラルゴピーソリーマー　＃3　太", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 155, "name": "MD1 014 US4 RA 　ラウンドバー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 156, "name": "MSスチールバー　ラウンド　22mm 010 #2", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 157, "name": "TKロングバー　3本入り", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 3, "unit": "個", "category": "バー在庫"}, {"id": 158, "name": "702 カーバイドバー　フィッシャー形", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 3, "unit": "個", "category": "バー在庫"}, {"id": 159, "name": "6 カーバイドバー　ラウンド形", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 3, "unit": "個", "category": "バー在庫"}, {"id": 160, "name": "ビッグシリコンポイント　茶", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 161, "name": "ビッグシリコンポイント　白", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 162, "name": "グロマスターZR　ミディアム", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 163, "name": "グロマスターZR　ファイン", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 164, "name": "松風　シリコンポイント　茶", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 165, "name": "松風　シリコンポイント　青", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 166, "name": "松風　カーボランダムポイント", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 2, "unit": "個", "category": "バー在庫"}, {"id": 167, "name": "MSスチールバー　フィッシャー　016 ＃702", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "バー在庫"}, {"id": 168, "name": "MSスチールバー　フィッシャー　021 ＃703", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "バー在庫"}, {"id": 169, "name": "MSスチールバー　フィッシャー　025 ＃705", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "バー在庫"}, {"id": 170, "name": "景品類（消しゴム・スタンプ・シール等）", "supplier": "Ci", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 171, "name": "歯科検診基本セット Ｐタイプ", "supplier": "FEED", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 172, "name": "国保用緑　１号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 173, "name": "国保用緑　２号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 174, "name": "社保（本人黒　家族赤）　１号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 175, "name": "社保（本人黒　家族赤）　２号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 176, "name": "自費黒　B5　１号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 177, "name": "自費黒　B5　２号用紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 178, "name": "自動精算機感熱紙", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 179, "name": "ブリリアントモアＷ　ナチュラル", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 180, "name": "ブリリアントモアＷ　シトラス", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 181, "name": "ブリリアントモアＷ　アプリコット", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 182, "name": "チェックアップ スタンダード", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 183, "name": "プラウト Ｓ（ソフト） アソート", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 184, "name": "プチソフト（子供向けワンタフトブラシ） ２４入", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 185, "name": "咬合紙　アーティキュレーティングペーパー", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 186, "name": "ハイ－ボンド グラスアイオノマー ＣＸ　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 187, "name": "ハイ－ボンド グラスアイオノマー ＣＸ　液", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 188, "name": "テンポラリーハード　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 189, "name": "テンポラリーハード　液", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 190, "name": "ベースセメント　粉", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 191, "name": "ベースセメント　液", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 192, "name": "SAルーティングセメント", "supplier": "KO", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 193, "name": "カルテホルダー", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 194, "name": "リヒトラブ 見出し紙（無地）", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 195, "name": "アスクル ゴミ袋 乳白半透明 ４５Ｌ", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 196, "name": "アスクル オリジナルクラフト封筒 角２", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 197, "name": "診察券　券面と裏地シール", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 198, "name": "ニチバン セロテープ １５ｍｍ×３５ｍ", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 199, "name": "なかよし薬袋トゥース君（中型）５００枚", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 200, "name": "なかよし薬袋トゥース君（小型）５００枚", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 201, "name": "ホチキス芯", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 202, "name": "トイレの消臭力", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 203, "name": "洗剤", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 204, "name": "無香空間", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 205, "name": "柔軟剤　ハミングフレア", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 206, "name": "コピー用紙 コクヨ Ａ４", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 207, "name": "リヒトラブ カラーナンバーラベル ロールタイプ", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 208, "name": "アスクル クリアーホルダー A4 エコノミースリム", "supplier": "アスクル", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 209, "name": "環境共生トナーＬＢ３２１", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}, {"id": 210, "name": "ドラムカートリッジＬＢ３２１", "supplier": "ササキ", "supplierEmail": "", "stock": 0, "min": 1, "unit": "個", "category": "毎月確認 1F"}]
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // リサイズして容量を抑える
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+      else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.75);
+      showModalPhoto(pendingPhoto);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function showModalPhoto(src) {
+  const preview  = document.getElementById('modal-photo-preview');
+  const ph       = document.getElementById('modal-photo-placeholder');
+  const rmBtn    = document.getElementById('modal-photo-remove');
+  preview.src    = src;
+  preview.style.display = 'block';
+  ph.style.display      = 'none';
+  rmBtn.style.display   = 'block';
+}
+
+function clearModalPhoto() {
+  const preview = document.getElementById('modal-photo-preview');
+  const ph      = document.getElementById('modal-photo-placeholder');
+  const rmBtn   = document.getElementById('modal-photo-remove');
+  preview.src           = '';
+  preview.style.display = 'none';
+  ph.style.display      = 'flex';
+  rmBtn.style.display   = 'none';
+}
+
+function removePhoto() {
+  pendingPhoto = null;
+  clearModalPhoto();
+}
+
+function openPhotoModal(id) {
+  const it  = items.find(i => i.id === id);
+  const src = photos[id];
+  if (!src) return;
+  document.getElementById('photo-modal-img').src  = src;
+  document.getElementById('photo-modal-name').textContent = it ? it.name : '';
+  document.getElementById('photo-modal').classList.add('open');
+}
+
+function closePhotoModal() {
+  document.getElementById('photo-modal').classList.remove('open');
+}
+
+// ---- CSV書き出し ----
+function exportCSV() {
+  if (historyData.length === 0) { showToast('発注履歴がありません', 'error'); return; }
+  const BOM  = '\uFEFF';
+  const header = '発注日,発注先,発注内容,送信先メール,ステータス\n';
+  const rows   = historyData.map(h =>
+    [h.date, h.supplier, `"${h.items}"`, h.email || '', '送信済み'].join(',')
+  ).join('\n');
+  const blob = new Blob([BOM + header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `発注履歴_${new Date().toLocaleDateString('ja-JP').replace(/\//g,'-')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSVをダウンロードしました', 'success');
+}
+
+// ---- 印刷 ----
+function printHistory() {
+  if (historyData.length === 0) { showToast('発注履歴がありません', 'error'); return; }
+  const now = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+
+  const target = historyFilter === 'all' ? historyData : historyData.filter(h => h.supplier === historyFilter);
+
+  const bySupplier = {};
+  target.forEach(h => {
+    if (!bySupplier[h.supplier]) bySupplier[h.supplier] = [];
+    bySupplier[h.supplier].push(h);
+  });
+
+  const sections = Object.entries(bySupplier).map(([sup, list], i) => {
+    const pageBreak = i > 0 ? 'page-break-before: always;' : '';
+    let no = 1;
+    // 発注内容を商品ごとに1行ずつ展開
+    const rows = list.flatMap(h =>
+      h.items.split('、').map(item => {
+        const m = item.match(/^(.+?) ×(\d+)$/);
+        const name = m ? m[1] : item;
+        const qty  = m ? m[2] : '';
+        return `<tr>
+          <td class="print-check"><span class="check-box"></span></td>
+          <td class="print-no">${no++}</td>
+          <td>${name}</td>
+          <td class="print-qty">${qty}</td>
+          <td class="print-unit">個</td>
+          <td class="print-date-col"></td>
+        </tr>`;
+      })
+    ).join('');
+
+    return `<div style="${pageBreak}">
+      <div class="print-header">
+        <div class="print-title">発注書 — ${sup}</div>
+        <div class="print-date">発注日：${now}　　全 ${list.reduce((a,h)=>a+h.items.split('、').length,0)} 件</div>
+      </div>
+      <div class="print-supplier">${sup}</div>
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th class="print-check">チェック</th>
+            <th class="print-no">No.</th>
+            <th>商品名</th>
+            <th class="print-qty">発注数</th>
+            <th class="print-unit">単位</th>
+            <th class="print-date-col">日付</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="print-footer">歯科在庫管理システム — ${now} 出力</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('print-area').innerHTML = sections;
+  window.print();
+}
+
+// ---- 商品追加・編集モーダル ----
+function openAddModal() {
+  editingId = null; pendingPhoto = null;
+  document.getElementById('modal-title').textContent = '商品を追加';
+  ['f-name','f-supplier','f-stock','f-min','f-unit'].forEach(id => document.getElementById(id).value = '');
+  clearModalPhoto();
+  updateSupplierDatalist();
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+    <button class="modal-save" onclick="saveItem()">追加する</button>`;
+  document.getElementById('item-modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  editingId = id;
+  pendingPhoto = photos[id] || null;
+  document.getElementById('modal-title').textContent = '商品を編集';
+  document.getElementById('f-name').value     = it.name;
+  document.getElementById('f-supplier').value = it.supplier;
+  document.getElementById('f-stock').value    = it.stock;
+  document.getElementById('f-min').value      = it.min;
+  document.getElementById('f-unit').value     = it.unit;
+  if (pendingPhoto) showModalPhoto(pendingPhoto);
+  else clearModalPhoto();
+  updateSupplierDatalist();
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="modal-delete" onclick="confirmDelete(${id})">削除</button>
+    <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+    <button class="modal-save" onclick="saveItem()">保存する</button>`;
+  document.getElementById('item-modal').classList.add('open');
+}
+
+function updateSupplierDatalist() {
+  const suppliers = [...new Set(items.map(i => i.supplier))];
+  document.getElementById('supplier-list').innerHTML = suppliers.map(s => `<option value="${s}">`).join('');
+}
+
+function closeModal() { document.getElementById('item-modal').classList.remove('open'); }
+
+function saveItem() {
+  const name     = document.getElementById('f-name').value.trim();
+  const supplier = document.getElementById('f-supplier').value.trim();
+  const stock    = parseInt(document.getElementById('f-stock').value) || 0;
+  const min      = parseInt(document.getElementById('f-min').value)   || 1;
+  const unit     = document.getElementById('f-unit').value.trim()     || '個';
+  if (!name)     { showToast('商品名を入力してください', 'error'); return; }
+  if (!supplier) { showToast('発注先を入力してください', 'error'); return; }
+
+  let targetId;
+  if (editingId !== null) {
+    const it = items.find(i => i.id === editingId);
+    const newEmail = supplier !== it.supplier ? (items.find(i => i.supplier === supplier)?.supplierEmail || '') : it.supplierEmail;
+    Object.assign(it, { name, supplier, stock, min, unit, supplierEmail: newEmail });
+    targetId = editingId;
+    showToast('商品を更新しました', 'success');
+  } else {
+    targetId = nextId();
+    items.push({ id: targetId, name, supplier, supplierEmail: items.find(i => i.supplier === supplier)?.supplierEmail || '', stock, min, unit });
+    showToast('商品を追加しました', 'success');
+  }
+
+  // 写真を保存
+  if (pendingPhoto) photos[targetId] = pendingPhoto;
+  else delete photos[targetId];
+  savePhotos();
+
+  saveItems(); closeModal(); renderInventory();
+  if (document.getElementById('tab-settings').style.display !== 'none') renderSettings();
+}
+
+function confirmDelete(id) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  document.getElementById('confirm-desc').textContent = `「${it.name}」を削除します。この操作は取り消せません。`;
+  document.getElementById('confirm-ok-btn').onclick = () => deleteItem(id);
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+function deleteItem(id) {
+  const it = items.find(i => i.id === id);
+  items = items.filter(i => i.id !== id);
+  delete photos[id];
+  savePhotos();
+  if (orderList[id]) { delete orderList[id]; updateOrderBadge(); }
+  saveItems(); closeConfirm(); closeModal();
+  showToast(`「${it.name}」を削除しました`, 'success');
+  renderInventory();
+}
+
+// ---- EmailJS設定 ----
+function renderSetupArea() {
+  const el = document.getElementById('setup-area');
+  if (isConfigured()) {
+    el.innerHTML = `<div class="setup-banner setup-ok"><p class="setup-ok-text">✓ EmailJS 設定済み — メール送信が有効です</p></div>`;
+  } else {
+    el.innerHTML = `<div class="setup-banner">
+      <h3>EmailJS の設定が必要です（初回のみ）</h3>
+      <div class="setup-grid">
+        <div class="setup-field"><label>Public Key</label><input id="cfg-pk" placeholder="abc123XYZ" value="${emailConfig.publicKey}"/></div>
+        <div class="setup-field"><label>Service ID</label><input id="cfg-si" placeholder="service_xxxxx" value="${emailConfig.serviceId}"/></div>
+        <div class="setup-field"><label>Template ID</label><input id="cfg-ti" placeholder="template_xxxxx" value="${emailConfig.templateId}"/></div>
+      </div>
+      <button class="setup-save-btn" onclick="saveEmailConfigTop()">保存して有効にする</button>
+    </div>`;
+  }
+}
+function saveEmailConfigTop() {
+  emailConfig = { publicKey: document.getElementById('cfg-pk').value.trim(), serviceId: document.getElementById('cfg-si').value.trim(), templateId: document.getElementById('cfg-ti').value.trim() };
+  saveConfig(); if (isConfigured()) emailjs.init(emailConfig.publicKey);
+  renderSetupArea(); showToast('EmailJS設定を保存しました', 'success');
+}
+
+// ---- 在庫一覧 ----
+const categories = ['毎週確認','隔週確認','毎月確認 2F','バー在庫','毎月確認 1F'];
+
+function renderInventory() {
+  const search = (document.getElementById('search-box')?.value || '').toLowerCase();
+  const filtered = items.filter(it => {
+    const ms = it.name.toLowerCase().includes(search);
+    if (currentFilter === 'all') return ms;
+    if (currentFilter === 'low') return getStatus(it) === 'low' && ms;
+    if (categories.includes(currentFilter)) return it.category === currentFilter && ms;
+    return it.supplier === currentFilter && ms;
+  });
+  const low  = items.filter(i => getStatus(i) === 'low').length;
+  const warn = items.filter(i => getStatus(i) === 'warn').length;
+  const ok   = items.filter(i => getStatus(i) === 'ok').length;
+  document.getElementById('badge-low').textContent = '要発注 ' + low + '件';
+
+  const catBtns = ['all','low',...categories].map(f => {
+    const label = f==='all'?'すべて':f==='low'?'要発注':f;
+    return `<button class="filter-btn ${currentFilter===f?'active':''}" onclick="setFilter('${f}')">${label}</button>`;
+  }).join('');
+
+  document.getElementById('tab-inventory').innerHTML = `
+    ${low > 0 ? `<div class="alert-banner">⚠ 基準在庫を下回っている商品が ${low} 件あります</div>` : ''}
+    <div class="filters">
+      ${catBtns}
+      <div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="renderInventory()" value="${search}"/></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-num" style="color:#1d1d1f">${items.length}</div><div class="stat-label">総品目数</div></div>
+      <div class="stat"><div class="stat-num" style="color:#e24b4a">${low}</div><div class="stat-label">要発注</div></div>
+      <div class="stat"><div class="stat-num" style="color:#f59e0b">${warn}</div><div class="stat-label">残量注意</div></div>
+      <div class="stat"><div class="stat-num" style="color:#34c759">${ok}</div><div class="stat-label">在庫十分</div></div>
+    </div>
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:10px">${filtered.length}件表示</div>
+    <div class="add-btn-wrap"><button class="add-item-btn" onclick="openAddModal()">＋ 商品を追加する</button></div>
+    <div class="grid">${filtered.length > 0 ? filtered.map(renderCard).join('') : '<div class="empty">該当する商品がありません</div>'}</div>`;
+}
+
+function renderCard(it) {
+  const st = getStatus(it);
+  const pct = Math.min(100, Math.round((it.stock / it.min) * 100));
+  const inOrder = !!orderList[it.id];
+  const photo   = photos[it.id];
+  const tagClass = st==='low'?'tag-red':st==='warn'?'tag-amber':'tag-green';
+  const tagLabel = st==='low'?'要発注':st==='warn'?'残量注意':'在庫十分';
+  const barClass = st==='low'?'bar-low':st==='warn'?'bar-warn':'bar-ok';
+
+  const photoArea = photo
+    ? `<div class="card-photo" onclick="openPhotoModal(${it.id})">
+        <img src="${photo}" alt="${it.name}"/>
+        <div class="card-photo-overlay"><span>拡大</span></div>
+      </div>`
+    : `<div class="card-photo" onclick="openEditModal(${it.id})">
+        <div class="card-photo-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span>写真を追加</span>
+        </div>
+      </div>`;
+
+  return `<div class="card ${st==='low'?'low':''} ${inOrder?'in-order':''}">
+    ${photoArea}
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div class="card-supplier">${it.supplier}</div>
+        <span style="font-size:10px;color:#8e8e93;background:#f5f5f7;padding:2px 6px;border-radius:6px">${it.category||''}</span>
+      </div>
+      <span class="tag ${tagClass}">${tagLabel}</span>
+      <div class="card-name">${it.name}</div>
+      <div class="qty-row"><span class="qty-label">現在庫</span><span class="qty-num ${st==='low'?'qty-low':''}">${it.stock}<span style="font-size:13px;font-weight:400"> ${it.unit}</span></span></div>
+      <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
+      <div class="bar-meta"><span>基準: ${it.min}${it.unit}</span><span>${pct}%</span></div>
+      <div class="card-actions">
+        <button class="btn-sm" onclick="updateStock(${it.id},-1)">－1</button>
+        <button class="btn-sm" onclick="updateStock(${it.id},1)">＋1</button>
+        <button class="btn-sm ${inOrder?'btn-ordered':'btn-order'}" onclick="toggleOrder(${it.id})">${inOrder?'済✓':'発注'}</button>
+        <button class="btn-sm btn-edit" onclick="openEditModal(${it.id})">編集</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateStock(id, delta) {
+  const it = items.find(i => i.id === id);
+  const before = it.stock;
+  it.stock = Math.max(0, it.stock + delta);
+  const actual = it.stock - before;
+  if (actual !== 0) {
+    useLog.unshift({ id, name: it.name, supplier: it.supplier, delta: actual, date: new Date().toLocaleDateString('ja-JP') + ' ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit'}) });
+    if (useLog.length > 500) useLog.pop();
+    saveUseLog();
+  }
+  saveItems(); renderInventory();
+}
+function setFilter(f) { currentFilter = f; renderInventory(); }
+function toggleOrder(id) {
+  const it = items.find(i => i.id === id);
+  if (orderList[id]) delete orderList[id];
+  else {
+    const lastQty = orderQtyHistory[id];
+    const defaultQty = Math.max(1, it.min - it.stock);
+    orderList[id] = { item: it, qty: lastQty || defaultQty, usedLastQty: !!lastQty };
+  }
+  updateOrderBadge(); renderInventory();
+}
+function updateOrderBadge() {
+  const count = Object.keys(orderList).length;
+  const badge = document.getElementById('badge-order');
+  badge.style.display = count > 0 ? '' : 'none';
+  badge.textContent = '発注リスト ' + count + '件';
+}
+
+// ---- 発注リスト ----
+function renderOrder() {
+  const entries = Object.values(orderList);
+  if (entries.length === 0) {
+    document.getElementById('tab-order').innerHTML = '<div class="empty">発注リストは空です。<br>在庫一覧から「発注」を押して追加してください。</div>';
+    return;
+  }
+  const bySupplier = {};
+  entries.forEach(e => {
+    if (!bySupplier[e.item.supplier]) bySupplier[e.item.supplier] = [];
+    bySupplier[e.item.supplier].push(e);
+  });
+  document.getElementById('tab-order').innerHTML = Object.entries(bySupplier).map(([sup, list]) => {
+    const supEmail = list[0].item.supplierEmail || '';
+    const today    = new Date().toLocaleDateString('ja-JP');
+    const lines    = list.map(e => `・${e.item.name}　${e.qty}${e.item.unit}（現在庫: ${e.item.stock}）`).join('\n');
+    const preview  = `${sup} 御中\n\nお世話になっております。\n以下の商品を発注いたします。\n\n${lines}\n\nご確認のほどよろしくお願いいたします。`;
+    const canSend  = isConfigured() && supEmail;
+    const btnLabel = !isConfigured() ? 'EmailJS未設定 — 設定タブで登録してください'
+                   : !supEmail       ? '発注先メールが未登録 — 設定タブで登録してください'
+                   : `${sup} へメールで発注を送信`;
+    return `<div class="panel">
+      <div class="panel-sup-header">
+        <div><div class="panel-sup-name">${sup}</div><div class="panel-sup-email">${supEmail || '※ 設定タブで発注先メールを登録してください'}</div></div>
+      </div>
+      ${list.map(e => {
+        const ph = photos[e.item.id];
+        return `<div class="order-item">
+          ${ph ? `<img class="order-item-thumb" src="${ph}" alt="${e.item.name}"/>` : `<div class="order-item-thumb-empty"></div>`}
+          <div class="order-item-name">${e.item.name}</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <input class="qty-input" type="number" min="1" value="${e.qty}" onchange="updateQty(${e.item.id},this.value)"/>
+            ${e.usedLastQty ? `<span style="font-size:10px;color:#2563eb;background:#e5f0ff;padding:1px 6px;border-radius:6px">前回と同じ</span>` : ''}
+          </div>
+          <span style="font-size:12px;color:#8e8e93">${e.item.unit}</span>
+          <button class="btn-remove" onclick="removeOrder(${e.item.id})">✕</button>
+        </div>`;
+      }).join('')}
+      <div class="preview-box"><strong>送信されるメール内容：</strong><pre>${preview}</pre></div>
+      <button id="sendbtn-${sup.replace(/\s/g,'_')}" class="send-btn ${canSend?'btn-blue':'btn-disabled'}" onclick="${canSend?`sendOrderEmail('${sup}')`:''}">${btnLabel}</button>
+    </div>`;
+  }).join('');
+}
+
+function updateQty(id, val) { if (orderList[id]) orderList[id].qty = Math.max(1, parseInt(val) || 1); }
+function removeOrder(id) { delete orderList[id]; updateOrderBadge(); renderOrder(); renderInventory(); }
+
+async function sendOrderEmail(supplier) {
+  if (!isConfigured()) return;
+  const list     = Object.values(orderList).filter(e => e.item.supplier === supplier);
+  const supEmail = list[0]?.item.supplierEmail;
+  if (!supEmail) return;
+  const btnId = 'sendbtn-' + supplier.replace(/\s/g,'_');
+  const btn   = document.getElementById(btnId);
+  if (btn) { btn.disabled = true; btn.textContent = '送信中...'; btn.className = 'send-btn btn-disabled'; }
+  const lines = list.map(e => `・${e.item.name}　${e.qty}${e.item.unit}`).join('\n');
+  const today = new Date().toLocaleDateString('ja-JP');
+  try {
+    if (typeof emailjs === 'undefined') throw new Error('EmailJSライブラリが読み込まれていません。ページを再読み込みしてください。');
+    emailjs.init(emailConfig.publicKey);
+    await emailjs.send(emailConfig.serviceId, emailConfig.templateId, {
+      to_email: supEmail, to_name: supplier,
+      subject: `【発注】${supplier} ${today}`,
+      message: `${supplier} 御中\n\nお世話になっております。\n以下の商品を発注いたします。\n\n${lines}\n\nご確認のほどよろしくお願いいたします。`,
+    }, emailConfig.publicKey);
+    if (btn) { btn.textContent = '送信完了 ✓'; btn.className = 'send-btn btn-success'; }
+    showToast(supplier + ' への発注メールを送信しました', 'success');
+    const itemDesc = list.map(e => `${e.item.name} ×${e.qty}`).join('、');
+    historyData.unshift({ date: today, supplier, items: itemDesc, email: supEmail, status: 'sent' });
+    // 発注数量を履歴に保存
+    list.forEach(e => { orderQtyHistory[e.item.id] = e.qty; });
+    saveOrderQtyHistory();
+    saveHistory(); list.forEach(e => { delete orderList[e.item.id]; }); updateOrderBadge();
+    setTimeout(() => renderOrder(), 2000);
+  } catch(err) {
+    console.error(err);
+    if (btn) { btn.disabled = false; btn.textContent = '送信失敗 — 再試行'; btn.className = 'send-btn btn-error'; }
+    showToast('送信失敗: ' + (err.text || err.message || 'EmailJS設定を確認してください'), 'error');
+  }
+}
+
+// ---- 発注履歴 ----
+let historyFilter = 'all';
+
+function renderHistory() {
+  const el = document.getElementById('tab-history');
+  if (historyData.length === 0) { el.innerHTML = '<div class="empty">発注履歴はまだありません。</div>'; return; }
+
+  const suppliers = [...new Set(historyData.map(h => h.supplier))];
+  const filtered  = historyFilter === 'all' ? historyData : historyData.filter(h => h.supplier === historyFilter);
+
+  const filterBtns = ['all', ...suppliers].map(f => {
+    const label = f === 'all' ? 'すべて' : f;
+    const active = historyFilter === f ? 'active' : '';
+    return `<button class="filter-btn ${active}" onclick="setHistoryFilter('${f}')">${label}</button>`;
+  }).join('');
+
+  // 発注先ごとにグループ化
+  let listHTML = '';
+  if (historyFilter === 'all') {
+    const bySupplier = {};
+    filtered.forEach(h => {
+      if (!bySupplier[h.supplier]) bySupplier[h.supplier] = [];
+      bySupplier[h.supplier].push(h);
+    });
+    listHTML = Object.entries(bySupplier).map(([sup, list]) => `
+      <div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;color:#636366;margin-bottom:8px;padding:0 4px">${sup}（${list.length}件）</div>
+        <div class="history-list">
+          ${list.map(h => historyItemHTML(h)).join('')}
+        </div>
+      </div>`).join('');
+  } else {
+    listHTML = `<div class="history-list">${filtered.map(h => historyItemHTML(h)).join('')}</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="history-toolbar">
+      <button class="toolbar-btn btn-csv" onclick="exportCSV()">CSV 書き出し</button>
+      <button class="toolbar-btn btn-print" onclick="printHistory()">印刷する</button>
+    </div>
+    <div class="filters" style="margin-bottom:14px">${filterBtns}</div>
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:10px">${filtered.length}件</div>
+    ${listHTML}`;
+}
+
+function historyItemHTML(h) {
+  return `<div class="history-item">
+    <div style="flex:1">
+      <div class="history-date">${h.date} → ${h.email||''}</div>
+      <div class="history-desc">${h.items}</div>
+      <div class="history-sup">${h.supplier}</div>
+    </div>
+    <span class="status-sent">送信済み</span>
+  </div>`;
+}
+
+function setHistoryFilter(f) {
+  historyFilter = f;
+  renderHistory();
+}
+
+// ---- 設定 ----
+function renderSettings() {
+  const suppliers = [...new Set(items.map(i => i.supplier))];
+  document.getElementById('tab-settings').innerHTML = `
+    <div class="settings-section">
+      <div class="settings-title">EmailJS 設定</div>
+      <div class="field-row"><label class="field-label">Public Key</label><input id="s-pk" class="field-input" value="${emailConfig.publicKey}" placeholder="EmailJS Public Key"/></div>
+      <div class="field-row"><label class="field-label">Service ID</label><input id="s-si" class="field-input" value="${emailConfig.serviceId}" placeholder="service_xxxxx"/></div>
+      <div class="field-row"><label class="field-label">Template ID</label><input id="s-ti" class="field-input" value="${emailConfig.templateId}" placeholder="template_xxxxx"/></div>
+      <button class="emailjs-save-btn" onclick="saveSettingsConfig()">保存</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">発注先メールアドレス</div>
+      ${suppliers.length === 0
+        ? '<p style="font-size:14px;color:#8e8e93">商品を追加すると発注先が表示されます。</p>'
+        : suppliers.map(sup => {
+            const email = items.find(i => i.supplier === sup)?.supplierEmail || '';
+            return `<div class="supplier-row">
+              <div class="supplier-name">${sup}</div>
+              <input id="semail-${sup}" class="supplier-email-input ${email?'saved':''}" type="email" value="${email}" placeholder="order@supplier.co.jp"/>
+              <button id="sbtn-${sup}" class="save-ind-btn ${email?'saved-ok':''}" onclick="saveSupplierEmail('${sup}')">${email?'保存済み':'保存'}</button>
+            </div>`;
+          }).join('') + `<button class="save-all-btn" onclick="saveAllEmails()">すべて保存</button>`
+      }
+    </div>`;
+}
+
+function saveSettingsConfig() {
+  emailConfig = { publicKey: document.getElementById('s-pk').value.trim(), serviceId: document.getElementById('s-si').value.trim(), templateId: document.getElementById('s-ti').value.trim() };
+  saveConfig(); if (isConfigured()) emailjs.init(emailConfig.publicKey);
+  renderSetupArea(); showToast('EmailJS設定を保存しました', 'success');
+}
+function saveSupplierEmail(supplier) {
+  const input = document.getElementById('semail-' + supplier);
+  const btn   = document.getElementById('sbtn-' + supplier);
+  const email = input.value.trim();
+  items.forEach(it => { if (it.supplier === supplier) it.supplierEmail = email; });
+  saveItems(); input.classList.add('saved');
+  if (btn) { btn.classList.add('saved-ok'); btn.textContent = '保存済み'; }
+  showToast(supplier + ' のメールアドレスを保存しました', 'success');
+}
+function saveAllEmails() {
+  const suppliers = [...new Set(items.map(i => i.supplier))];
+  let count = 0;
+  suppliers.forEach(sup => {
+    const input = document.getElementById('semail-' + sup);
+    if (!input) return;
+    const email = input.value.trim();
+    items.forEach(it => { if (it.supplier === sup) it.supplierEmail = email; });
+    if (email) {
+      input.classList.add('saved');
+      const btn = document.getElementById('sbtn-' + sup);
+      if (btn) { btn.classList.add('saved-ok'); btn.textContent = '保存済み'; }
+      count++;
+    }
+  });
+  saveItems(); showToast(`${count}件の発注先メールアドレスを保存しました`, 'success');
+}
+
+function switchTab(name) {
+  ['inventory','order','history','uselog','settings'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['inventory','order','history','uselog','settings'][i] === name);
+  });
+  if (name === 'order')    renderOrder();
+  if (name === 'history')  renderHistory();
+  if (name === 'uselog')   renderUseLog();
+  if (name === 'settings') renderSettings();
+}
+
+
+// ---- 使用ログ ----
+function renderUseLog() {
+  const el = document.getElementById('tab-uselog');
+  if (useLog.length === 0) { el.innerHTML = '<div class="empty">使用ログはまだありません。<br>在庫一覧で＋1・－1を操作すると記録されます。</div>'; return; }
+  const suppliers = [...new Set(useLog.map(l => l.supplier).filter(Boolean))];
+  let logFilter = document.getElementById('log-filter-val')?.value || 'all';
+  const filtered = logFilter === 'all' ? useLog : useLog.filter(l => l.supplier === logFilter);
+  const filterBtns = ['all',...suppliers].map(f => {
+    const label = f==='all'?'すべて':f;
+    return `<button class="filter-btn ${logFilter===f?'active':''}" onclick="setLogFilter('${f}')">${label}</button>`;
+  }).join('');
+  el.innerHTML = `
+    <input type="hidden" id="log-filter-val" value="${logFilter}"/>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:16px;font-weight:600;color:var(--text)">使用ログ</div>
+      <button onclick="clearUseLog()" style="font-size:12px;padding:6px 14px;border:1px solid #e24b4a;border-radius:10px;background:none;color:#e24b4a;cursor:pointer">ログを消去</button>
+    </div>
+    <div class="filters" style="margin-bottom:12px">${filterBtns}</div>
+    <div style="font-size:13px;color:#8e8e93;margin-bottom:10px">${filtered.length}件</div>
+    <div class="history-list">
+      ${filtered.map(l => `<div class="history-item">
+        <div style="flex:1">
+          <div class="history-date">${l.date}</div>
+          <div class="history-desc">${l.name}</div>
+          <div class="history-sup">${l.supplier||''}</div>
+        </div>
+        <span style="font-size:14px;font-weight:600;padding:4px 12px;border-radius:10px;${l.delta<0?'background:#ffe5e5;color:#c0392b':'background:#e6f7ee;color:#1a7a3a'}">${l.delta>0?'+':''}${l.delta}</span>
+      </div>`).join('')}
+    </div>`;
+}
+function setLogFilter(f) {
+  const el = document.getElementById('log-filter-val');
+  if (el) el.value = f;
+  renderUseLog();
+}
+function clearUseLog() {
+  if (!confirm('使用ログをすべて消去しますか？')) return;
+  useLog = []; saveUseLog(); renderUseLog();
+  showToast('使用ログを消去しました', 'success');
+}
+
+// ---- リマインダーチェック ----
+function checkReminders() {
+  const now   = new Date();
+  const day   = now.getDay();   // 0=日〜6=土
+  const date  = now.getDate();
+  const week  = Math.ceil(date / 7); // 第何週か
+  const msgs  = [];
+
+  if (reminderConfig.weekly.enabled && day === reminderConfig.weekly.day) {
+    msgs.push({ label: reminderConfig.weekly.label, category: '毎週確認', color: '#2563eb' });
+  }
+  if (reminderConfig.biweekly.enabled && reminderConfig.biweekly.week.includes(week) && day === reminderConfig.biweekly.day) {
+    msgs.push({ label: reminderConfig.biweekly.label, category: '隔週確認', color: '#7c3aed' });
+  }
+  if (reminderConfig.monthly.enabled) {
+    // 第1水曜チェック（水曜=3、第1週）
+    if (week === 1 && day === 3) {
+      msgs.push({ label: '毎月第1水曜日', category: '毎月確認', color: '#059669' });
+    }
+  }
+
+  if (msgs.length === 0) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'reminder-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:500;padding:0';
+  banner.innerHTML = msgs.map(m => `
+    <div style="background:${m.color};color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:600">📋 本日は${m.label}の在庫確認日です</div>
+        <div style="font-size:12px;opacity:0.9;margin-top:2px">「${m.category}」を確認してください</div>
+      </div>
+      <button onclick="dismissReminder()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px">確認</button>
+    </div>`).join('');
+  document.body.prepend(banner);
+
+  // アプリ全体を少し下にずらす
+  document.querySelector('.app').style.marginTop = (msgs.length * 56) + 'px';
+}
+function dismissReminder() {
+  const b = document.getElementById('reminder-banner');
+  if (b) b.remove();
+  document.querySelector('.app').style.marginTop = '0';
+}
+
+function initApp() {
+  if (isConfigured() && typeof emailjs !== 'undefined') {
+    emailjs.init(emailConfig.publicKey);
+  }
+  renderSetupArea();
+  renderInventory();
+  renderHistory();
+  checkReminders();
+}
+
+// EmailJSライブラリの読み込みを待ってから初期化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  // deferの場合はDOMContentLoaded後に実行されるが念のため
+  setTimeout(initApp, 0);
+}
+</script>
+</body>
+</html>

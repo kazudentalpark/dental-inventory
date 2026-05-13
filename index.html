@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0064)file:///Users/takeuchikazuhiro/Downloads/dental_inventory_8.html -->
+<!-- saved from url=(0062)file:///Users/takeuchikazuhiro/Downloads/dental_inventory.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -201,17 +201,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;ba
     <button class="tab" onclick="switchTab(&#39;settings&#39;)">設定</button>
   </div>
   <div id="tab-inventory">
-    <div class="alert-banner">⚠ 基準在庫を下回っている商品が 210 件あります</div>
-    <div class="filters"><button class="filter-btn active" onclick="setFilter(&#39;all&#39;)">すべて</button><button class="filter-btn " onclick="setFilter(&#39;low&#39;)">要発注</button><button class="filter-btn " onclick="setFilter(&#39;毎週確認&#39;)">毎週確認</button><button class="filter-btn " onclick="setFilter(&#39;隔週確認&#39;)">隔週確認</button><button class="filter-btn " onclick="setFilter(&#39;毎月確認 2F&#39;)">毎月確認 2F</button><button class="filter-btn " onclick="setFilter(&#39;バー在庫&#39;)">バー在庫</button><button class="filter-btn " onclick="setFilter(&#39;毎月確認 1F&#39;)">毎月確認 1F</button><div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="renderInventory()" value=""></div></div>
-    <div class="stats">
-      <div class="stat"><div class="stat-num" style="color:#1d1d1f">210</div><div class="stat-label">総品目数</div></div>
-      <div class="stat"><div class="stat-num" style="color:#e24b4a">210</div><div class="stat-label">要発注</div></div>
-      <div class="stat"><div class="stat-num" style="color:#f59e0b">0</div><div class="stat-label">残量注意</div></div>
-      <div class="stat"><div class="stat-num" style="color:#34c759">0</div><div class="stat-label">在庫十分</div></div>
-    </div>
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:10px">210件表示</div>
-    <div class="add-btn-wrap"><button class="add-item-btn" onclick="openAddModal()">＋ 商品を追加する</button></div>
-    <div class="grid"><div class="card low ">
+      <div id="inv-alert"><div class="alert-banner">⚠ 基準在庫を下回っている商品が 210 件あります</div></div>
+      <div class="filters" id="inv-filters"><button class="filter-btn active" onclick="setFilter(&#39;all&#39;)">すべて</button><button class="filter-btn " onclick="setFilter(&#39;low&#39;)">要発注</button><button class="filter-btn " onclick="setFilter(&#39;毎週確認&#39;)">毎週確認</button><button class="filter-btn " onclick="setFilter(&#39;隔週確認&#39;)">隔週確認</button><button class="filter-btn " onclick="setFilter(&#39;毎月確認 2F&#39;)">毎月確認 2F</button><button class="filter-btn " onclick="setFilter(&#39;バー在庫&#39;)">バー在庫</button><button class="filter-btn " onclick="setFilter(&#39;毎月確認 1F&#39;)">毎月確認 1F</button><div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="onSearchInput(event)" oncompositionstart="onSearchCompositionStart(event)" oncompositionend="onSearchCompositionEnd(event)" value=""></div></div>
+      <div class="stats">
+        <div class="stat"><div class="stat-num" style="color:#1d1d1f" id="stat-total">210</div><div class="stat-label">総品目数</div></div>
+        <div class="stat"><div class="stat-num" style="color:#e24b4a" id="stat-low">210</div><div class="stat-label">要発注</div></div>
+        <div class="stat"><div class="stat-num" style="color:#f59e0b" id="stat-warn">0</div><div class="stat-label">残量注意</div></div>
+        <div class="stat"><div class="stat-num" style="color:#34c759" id="stat-ok">0</div><div class="stat-label">在庫十分</div></div>
+      </div>
+      <div id="inv-count" style="font-size:13px;color:#8e8e93;margin-bottom:10px">210件表示</div>
+      <div class="add-btn-wrap"><button class="add-item-btn" onclick="openAddModal()">＋ 商品を追加する</button></div>
+      <div class="grid" id="inv-grid"><div class="card low ">
     <div class="card-photo" onclick="openEditModal(1)"><div class="card-photo-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><circle cx="12" cy="13" r="3"></circle></svg><span>写真を追加</span></div></div>
     <div class="card-body">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -4210,7 +4210,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;ba
 
 <div class="photo-modal-overlay" id="photo-modal" onclick="closePhotoModal()">
   <button class="photo-modal-close" onclick="closePhotoModal()">✕</button>
-  <img class="photo-modal-img" id="photo-modal-img" src="file:///Users/takeuchikazuhiro/Downloads/dental_inventory_8.html" alt="">
+  <img class="photo-modal-img" id="photo-modal-img" src="file:///Users/takeuchikazuhiro/Downloads/dental_inventory.html" alt="">
   <div class="photo-modal-name" id="photo-modal-name"></div>
 </div>
 
@@ -4225,7 +4225,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;ba
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><circle cx="12" cy="13" r="3"></circle></svg>
           <span>タップして写真を撮る・選ぶ</span>
         </div>
-        <img id="modal-photo-preview" src="file:///Users/takeuchikazuhiro/Downloads/dental_inventory_8.html" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+        <img id="modal-photo-preview" src="file:///Users/takeuchikazuhiro/Downloads/dental_inventory.html" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
       </div>
       <div class="modal-photo-hint">iPadカメラまたはフォトライブラリから選択できます</div>
       <input type="file" id="photo-file-input" class="photo-input" accept="image/*" capture="environment" onchange="handlePhotoSelect(event)">
@@ -4497,7 +4497,8 @@ function saveEmailConfigTop() {
 
 // ---- 在庫一覧 ----
 function renderInventory() {
-  const search=(document.getElementById('search-box')?.value||'').toLowerCase();
+  const searchEl = document.getElementById('search-box');
+  const search = (searchEl?.value || '').toLowerCase();
   const filtered=items.filter(it=>{
     const ms=it.name.toLowerCase().includes(search);
     if(currentFilter==='all') return ms;
@@ -4509,22 +4510,61 @@ function renderInventory() {
   const warn=items.filter(i=>getStatus(i)==='warn').length;
   const ok=items.filter(i=>getStatus(i)==='ok').length;
   document.getElementById('badge-low').textContent='要発注 '+low+'件';
-  const catBtns=['all','low',...categories].map(f=>{
-    const label=f==='all'?'すべて':f==='low'?'要発注':f;
-    return `<button class="filter-btn ${currentFilter===f?'active':''}" onclick="setFilter('${f}')">${label}</button>`;
-  }).join('');
-  document.getElementById('tab-inventory').innerHTML=`
-    ${low>0?`<div class="alert-banner">⚠ 基準在庫を下回っている商品が ${low} 件あります</div>`:''}
-    <div class="filters">${catBtns}<div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="renderInventory()" value="${search}"/></div></div>
-    <div class="stats">
-      <div class="stat"><div class="stat-num" style="color:#1d1d1f">${items.length}</div><div class="stat-label">総品目数</div></div>
-      <div class="stat"><div class="stat-num" style="color:#e24b4a">${low}</div><div class="stat-label">要発注</div></div>
-      <div class="stat"><div class="stat-num" style="color:#f59e0b">${warn}</div><div class="stat-label">残量注意</div></div>
-      <div class="stat"><div class="stat-num" style="color:#34c759">${ok}</div><div class="stat-label">在庫十分</div></div>
-    </div>
-    <div style="font-size:13px;color:#8e8e93;margin-bottom:10px">${filtered.length}件表示</div>
-    <div class="add-btn-wrap"><button class="add-item-btn" onclick="openAddModal()">＋ 商品を追加する</button></div>
-    <div class="grid">${filtered.length>0?filtered.map(renderCard).join(''):'<div class="empty">該当する商品がありません</div>'}</div>`;
+
+  const tab = document.getElementById('tab-inventory');
+  // 初回または検索ボックスがない場合は全体を描画
+  if(!document.getElementById('search-box')) {
+    const catBtns=['all','low',...categories].map(f=>{
+      const label=f==='all'?'すべて':f==='low'?'要発注':f;
+      return `<button class="filter-btn ${currentFilter===f?'active':''}" onclick="setFilter('${f}')">${label}</button>`;
+    }).join('');
+    tab.innerHTML=`
+      <div id="inv-alert"></div>
+      <div class="filters" id="inv-filters">${catBtns}<div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="onSearchInput(event)" oncompositionstart="onSearchCompositionStart(event)" oncompositionend="onSearchCompositionEnd(event)"/></div></div>
+      <div class="stats">
+        <div class="stat"><div class="stat-num" style="color:#1d1d1f" id="stat-total">${items.length}</div><div class="stat-label">総品目数</div></div>
+        <div class="stat"><div class="stat-num" style="color:#e24b4a" id="stat-low">${low}</div><div class="stat-label">要発注</div></div>
+        <div class="stat"><div class="stat-num" style="color:#f59e0b" id="stat-warn">${warn}</div><div class="stat-label">残量注意</div></div>
+        <div class="stat"><div class="stat-num" style="color:#34c759" id="stat-ok">${ok}</div><div class="stat-label">在庫十分</div></div>
+      </div>
+      <div id="inv-count" style="font-size:13px;color:#8e8e93;margin-bottom:10px">${filtered.length}件表示</div>
+      <div class="add-btn-wrap"><button class="add-item-btn" onclick="openAddModal()">＋ 商品を追加する</button></div>
+      <div class="grid" id="inv-grid"></div>`;
+  }
+
+  // アラート更新
+  const alertEl = document.getElementById('inv-alert');
+  if(alertEl) alertEl.innerHTML = low>0?`<div class="alert-banner">⚠ 基準在庫を下回っている商品が ${low} 件あります</div>`:'';
+
+  // フィルターボタン更新（検索ボックスのフォーカスを保持するため別途更新）
+  const filtersEl = document.getElementById('inv-filters');
+  if(filtersEl) {
+    const catBtns=['all','low',...categories].map(f=>{
+      const label=f==='all'?'すべて':f==='low'?'要発注':f;
+      return `<button class="filter-btn ${currentFilter===f?'active':''}" onclick="setFilter('${f}')">${label}</button>`;
+    }).join('');
+    // 既存の検索ボックスの値を保持しつつフィルターボタンだけ更新
+    const currentVal = document.getElementById('search-box')?.value || '';
+    filtersEl.innerHTML=`${catBtns}<div class="search-wrap"><input class="search-input" type="text" id="search-box" placeholder="商品名で検索..." oninput="onSearchInput(event)" oncompositionstart="onSearchCompositionStart(event)" oncompositionend="onSearchCompositionEnd(event)" value="${currentVal}"/></div>`;
+  }
+
+  // 統計更新
+  const statTotal=document.getElementById('stat-total');
+  const statLow=document.getElementById('stat-low');
+  const statWarn=document.getElementById('stat-warn');
+  const statOk=document.getElementById('stat-ok');
+  if(statTotal) statTotal.textContent=items.length;
+  if(statLow) statLow.textContent=low;
+  if(statWarn) statWarn.textContent=warn;
+  if(statOk) statOk.textContent=ok;
+
+  // 件数更新
+  const countEl=document.getElementById('inv-count');
+  if(countEl) countEl.textContent=filtered.length+'件表示';
+
+  // グリッドのみ更新（検索ボックスのフォーカスが外れない）
+  const grid=document.getElementById('inv-grid');
+  if(grid) grid.innerHTML=filtered.length>0?filtered.map(renderCard).join(''):'<div class="empty">該当する商品がありません</div>';
 }
 function renderCard(it) {
   const st=getStatus(it);
@@ -4571,6 +4611,21 @@ function updateStock(id,delta) {
   saveItems();renderInventory();
 }
 function setFilter(f){currentFilter=f;renderInventory();}
+let _searchTimer = null;
+let _isComposing = false;
+function onSearchInput(e) {
+  if(_isComposing) return;
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => renderInventory(), 300);
+}
+function onSearchCompositionStart(e) {
+  _isComposing = true;
+}
+function onSearchCompositionEnd(e) {
+  _isComposing = false;
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => renderInventory(), 100);
+}
 function toggleOrder(id) {
   const it=items.find(i=>i.id===id);
   if(orderList[id])delete orderList[id];
